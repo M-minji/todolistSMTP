@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,8 @@ import static com.minji.smtp.common.GlobalConst.*;
 public class MailService {
     @Autowired
     private JavaMailSender mailSender;
-
+    @Value("${spring.mail.username}")
+    private String senderMAil;
     private ConcurrentHashMap<String, String> authCodes; // 이메일과 인증 코드를 저장하는 맵
     private ScheduledExecutorService scheduler; // 주어진 시간에 작업을 실행하게 해줌
 
@@ -31,6 +33,19 @@ public class MailService {
         scheduler = Executors.newScheduledThreadPool(1);
     }
 
+    public void checkEmail(String email) {
+        if(email == null || email.isEmpty()) {  // 입력되지 않았다면
+            throw new RuntimeException("이메일을 입력해주세요.");
+        }
+        String[] isAt = email.split("@");
+        if(isAt.length == 1) {  // @ 이 포함되어있지 않다면
+            throw new RuntimeException("다시 입력해주세요.");
+        }
+        String[] isDot = isAt[1].split("\\.");
+        if(isDot.length == 1) {  // 도메인 부분에 . 이 없다면
+            throw new RuntimeException("다시 입력해주세요.");
+        }
+    }
     public String createKey() {  // 인증코드 생성
         Random random = new Random();
         StringBuilder key = new StringBuilder(CODE_LENGTH);
@@ -50,30 +65,43 @@ public class MailService {
         return key.toString();
     }
 
-    public void sendAuthCode(String userEmail) throws MessagingException {
-        System.out.println("서비스 1");
+    public String sendAuthCode(String userEmail) {
         String key = createKey();
-        System.out.println("서비스 2");
         authCodes.put(userEmail, key); // 코드 맵에 저장
         scheduler.schedule(() -> authCodes.remove(userEmail), EXPIRATION_TIME, TimeUnit.MINUTES); // 3분 후에 맵에서 인증 코드 삭제
 
-        System.out.println("서비스 3");
         MimeMessage message = mailSender.createMimeMessage();
-        System.out.println("서비스 4");
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "utf-8");
-        helper.setFrom("mj17428@naver.com");
-        helper.setTo(userEmail); // 수신자 이메일 주소를 설정합니다.
-        helper.setSubject("Your Authentication Code"); // 이메일 제목을 설정합니다.
-        helper.setText("Your authentication code is: " + key); // 이메일 내용을 설정합니다.
-
-        System.out.println("서비스 5");
-        mailSender.send(message); // 이메일을 전송합니다.
-        System.out.println("서비스 6");
+        MimeMessageHelper helper = null;
+        try {
+            helper = new MimeMessageHelper(message, true, "utf-8");
+            helper.setFrom(senderMAil);
+            helper.setTo(userEmail);
+            helper.setSubject("POSTIME 인증 코드 안내");  // 제목
+            helper.setText(String.format("안녕하십니까.\nPOSTIME 인증 코드 안내입니다.\n아래의 코드를 정확하게 입력해주세요.\n인증코드는 %d분 동안 유효합니다.\n\n%s\n",EXPIRATION_TIME ,key));
+        } catch (MessagingException e) {
+            throw new RuntimeException("전송 실패");
+        }
+        mailSender.send(message);
+        return key;
     }
 
-    public boolean verifyAuthCode(VerifyAuthReq p) {
-        // 이메일로 저장된 인증 코드와 입력받은 인증 코드를 비교하여 유효성을 검증합니다.
-        String storedAuthCode = authCodes.get(p.getUserEmail());
-        return p.getKey().equals(storedAuthCode);
+    public void checkCode(String key) {
+        if(key == null || key.isEmpty()) {  // 입력되지 않았다면
+            throw new RuntimeException("인증코드를 입력해주세요.");
+        }
+        if(key.length() != CODE_LENGTH) {
+            throw new RuntimeException("다시 입력해주세요.");
+        }
+    }
+    public void verifyAuthCode(VerifyAuthReq p) {
+        // 인증 코드를 비교하여 유효성 검증
+
+        if (!authCodes.containsKey(p.getEmail())) {  // 유효시간이 지나면 맵에서 사라짐
+            throw new RuntimeException("인증 코드를 다시 받아주세요.");
+        }
+        String storedAuthCode = authCodes.get(p.getEmail());  // 이메일에 저장된 코드 가져오기
+        if(!p.getKey().equals(storedAuthCode)) {
+            throw new RuntimeException("코드가 올바르지 않습니다.");
+        }
     }
 }

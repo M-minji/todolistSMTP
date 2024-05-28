@@ -20,6 +20,8 @@ spring:
         password: F8C3BEUDRBXG
         properties:
           mail:
+            transport:
+              protocol: smtp
             smtp:
               auth: true  # SMTP 인증 사용
               starttls:
@@ -27,7 +29,9 @@ spring:
                 required: true
               ssl:
                 trust: smtp.naver.com  # SSL 인증서 신뢰
+                protocols: TLSv1.2
               debug: true  # 디버깅 정보 출력
+
 
 mybatis:
   mapper-locations: mappers/**/*.xml

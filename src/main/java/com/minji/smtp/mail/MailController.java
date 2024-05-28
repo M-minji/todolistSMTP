@@ -1,11 +1,10 @@
 package com.minji.smtp.mail;
 
+import com.minji.smtp.common.ResultDto;
 import com.minji.smtp.mail.model.EmailReq;
 import com.minji.smtp.mail.model.VerifyAuthReq;
-import jakarta.mail.MessagingException;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,21 +15,41 @@ public class MailController {
     private final MailService service;
 
     @PostMapping("send")
-    public String sendAuthCode(@RequestBody @Valid EmailReq p) {
+    public ResultDto<String> sendAuthCode(@RequestBody EmailReq p) {
+        HttpStatus code = HttpStatus.OK;
+        String msg = "성공적으로 이메일을 전송하였습니다.";
+        String data = null;
         try {
-            System.out.println("컨트롤러 1");
-            service.sendAuthCode(p.getEmail()); // 인증 코드를 이메일로 전송합니다.
-            System.out.println("컨트롤러 2");
-            return "Authentication code sent."; // 성공 메시지를 반환합니다.
-        } catch (MessagingException e) {
-            System.out.println("컨트롤러 3");
-            return "Failed to send authentication code."; // 실패 메시지를 반환합니다.
+            service.checkEmail(p.getEmail());
+            data = service.sendAuthCode(p.getEmail()); // 인증 코드를 이메일로 전송합니다.
+        } catch (Exception e) {
+            code = HttpStatus.NO_CONTENT;
+            msg = e.getMessage();
         }
+        return ResultDto.<String>builder()
+                .statusCode(code)
+                .resultMsg(msg)
+                .resultData(data)
+                .build();
     }
 
     @PostMapping("verify")
-    public String verifyAuthCode(@RequestBody VerifyAuthReq p) {
-        boolean isValid = service.verifyAuthCode(p);
-        return isValid ? "Authentication successful." : "Authentication failed."; // 결과에 따라 메시지를 반환합니다.
+    public ResultDto<Integer> verifyAuthCode(@RequestBody VerifyAuthReq p) {
+        HttpStatus code = HttpStatus.OK;
+        String msg = "인증에 성공하였습니다.";
+        int data = 1;
+        try {
+            service.checkCode(p.getKey());
+            service.verifyAuthCode(p);
+        } catch (Exception e) {
+            code = HttpStatus.NO_CONTENT;
+            msg = e.getMessage();
+        }
+        return ResultDto.<Integer>builder()
+                .statusCode(code)
+                .resultMsg(msg)
+                .resultData(data)
+                .build();
+
     }
 }
