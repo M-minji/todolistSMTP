@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    driver-class-name: org.mariadb.jdbc.Driver
+    url: jdbc:mariadb://localhost:3306/first_test
+    username: root
+    password: maria1209
+  servlet:
+    multipart:
+      max-file-size: 5MB
+  mail:
+    host: smtp.naver.com # SMTP 서버 호스트
+    port: 587 # SMTP 서버 포트
+    username: mj17428@naver.com
+    password: F8C3BEUDRBXG
+    properties:
+      mail:
+        host: smtp.naver.com
+        port: 587
+        username: mj17428@naver.com
+        password: F8C3BEUDRBXG
+        properties:
+          mail:
+            smtp:
+              auth: true  # SMTP 인증 사용
+              starttls:
+                enable: true  # STARTTLS 사용
+                required: true
+              ssl:
+                trust: smtp.naver.com  # SSL 인증서 신뢰
+              debug: true  # 디버깅 정보 출력
+
+mybatis:
+  mapper-locations: mappers/**/*.xml
+
+springdoc:
+  api-docs:
+    version: openapi_3_1
+  swagger-ui:
+    path: /swagger
