@@ -14,17 +14,26 @@ public class MailController {
 
     private final MailService service;
 
+    private HttpStatus code;
+    private String msg;
+
+    private void init(String msg) {
+        this.msg = msg;
+        this.code = HttpStatus.OK;
+    }
+    private void notAcceptable(Exception e) {
+        this.code = HttpStatus.NOT_ACCEPTABLE;
+        this.msg = e.getMessage();
+    }
     @PostMapping("send")
     public ResultDto<String> sendAuthCode(@RequestBody EmailReq p) {
-        HttpStatus code = HttpStatus.OK;
-        String msg = "성공적으로 이메일을 전송하였습니다.";
+        init("성공적으로 이메일을 전송하였습니다.");
         String data = null;
         try {
             service.checkEmail(p.getEmail());
             data = service.sendAuthCode(p.getEmail()); // 인증 코드를 이메일로 전송합니다.
         } catch (Exception e) {
-            code = HttpStatus.NO_CONTENT;
-            msg = e.getMessage();
+            notAcceptable(e);
         }
         return ResultDto.<String>builder()
                 .statusCode(code)
@@ -35,15 +44,13 @@ public class MailController {
 
     @PostMapping("verify")
     public ResultDto<Integer> verifyAuthCode(@RequestBody VerifyAuthReq p) {
-        HttpStatus code = HttpStatus.OK;
-        String msg = "인증에 성공하였습니다.";
+        init("인증에 성공하였습니다.");
         int data = 1;
         try {
             service.checkCode(p.getKey());
             service.verifyAuthCode(p);
         } catch (Exception e) {
-            code = HttpStatus.NO_CONTENT;
-            msg = e.getMessage();
+            notAcceptable(e);
         }
         return ResultDto.<Integer>builder()
                 .statusCode(code)
